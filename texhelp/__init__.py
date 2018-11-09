@@ -1,2 +1,3 @@
-from helper import Helper
-from interpreter import *
+from interpreter import (
+    BaseTexInterpreter, TexInterpreter
+    )

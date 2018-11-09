@@ -12,11 +12,10 @@ def main():
 
     for texfile in args.texfiles:
         interpreter.set_base_file(texfile)
-        if len(args.texfiles) > 1: print '{0}'.format(texfile)
-        tree = interpreter.interpret_file(texfile)
 
-        for cite_node in tree.gen_blocks_by_name('cite'):
-            print cite_node.parse()
+        print '{0}'.format(texfile)
+        tree = interpreter.interpret_file(texfile)
+        print tree.render_structure()
 
 
 #____________________________________________________________________
