@@ -1,0 +1,39 @@
+#!/usr/bin/env python
+
+import texhelp
+import argparse
+import logging
+
+
+logging.getLogger().setLevel(logging.INFO)
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument('bibfiles', metavar='N', type=str, nargs='+', help='list of tex files to analyze' )
+    # parser.add_argument( '--bib', type=str, help='Compare the found citations to this bib file' )
+    # parser.add_argument( '--generate-bib', action='store_true', help='boolean')
+    parser.add_argument('-v', '--verbose', action='store_true', help='boolean')
+    args = parser.parse_args()
+
+    if args.verbose:
+        logging.getLogger().setLevel(logging.DEBUG)
+
+
+    for bibfile in args.bibfiles:
+        bibinterpreter = texhelp.BibInterpreter()
+        bibinterpreter.interpret_file(bibfile)
+
+        for i_match, match in enumerate(bibinterpreter.ordered_cites):
+            i_match_str = '[{0}]'.format(i_match+1)
+            logging.debug('Processing {0} {1}'.format(i_match_str, match))
+            block = bibinterpreter.cite_dict[match]
+
+            new_citation = block.get_reformatted_text().strip()
+            if new_citation != block.process(block.included_text).strip():
+                logging.info('Suggested new citation:')
+                logging.info(i_match_str + '\n' + new_citation)
+
+
+if __name__ == "__main__":
+    main()

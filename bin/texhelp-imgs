@@ -1,0 +1,19 @@
+#!/usr/bin/env python
+
+import texhelp
+import argparse
+
+def main():
+    parser = argparse.ArgumentParser()
+    # parser.add_argument( 'texfile', type=str, help='tex file to analyze' )
+    parser.add_argument( 'texfiles', metavar='N', type=str, nargs='+', help='list of tex files to analyze' )
+    # parser.add_argument( '--captions', action='store_true', help='prints also the captions', default=False)
+    args = parser.parse_args()
+
+    for texfile in args.texfiles:
+        helper = texhelp.Helper(texfile)
+        helper.print_images()
+
+
+if __name__ == "__main__":
+    main()

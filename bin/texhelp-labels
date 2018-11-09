@@ -1,0 +1,41 @@
+#!/usr/bin/env python
+
+import texhelp
+import argparse
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument( 'texfiles', metavar='N', type=str, nargs='+', help='list of tex files to analyze' )
+    args = parser.parse_args()
+
+
+    interpreter = texhelp.TexInterpreter()
+
+    label_blocks = []
+    for texfile in args.texfiles:
+        interpreter.interpret_file(texfile)
+        label_blocks.extend(interpreter.processed_blocks['label'])
+
+    labels = [ l.included_text for l in label_blocks ]
+
+    counts = {}
+    for label in labels:
+        if label in counts:
+            counts[label] += 1
+        else:
+            counts[label] = 1
+
+    unique_labels = list(set(labels))
+    unique_labels.sort(key = lambda l: labels.index(l))
+
+
+    for unique_label in unique_labels:
+        if counts[unique_label] > 1:
+            print unique_label + ' ({0} times)'.format(counts[unique_label])
+        else:
+            print unique_label
+
+
+
+if __name__ == "__main__":
+    main()

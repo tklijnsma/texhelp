@@ -1,0 +1,36 @@
+\documentclass[12pt]{article}
+
+% Import some packages
+\usepackage{graphicx}
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{amsfonts}
+\usepackage{upgreek}
+\usepackage{enumitem}
+
+\begin{document}
+
+This is a test document for the texhelper package
+
+% Provide some fake urls to images (this document is not meant to be compiled)
+
+\begin{figure}[hbtp]
+  \begin{center}
+    \includegraphics[width=\cmsFigWidth]{img/subdirectory/img1.pdf}
+    \includegraphics[width=\cmsFigWidth]{img/subdirectory/img2.pdf}
+    \caption{A few non-existent images}
+    \label{fig:thefirstfigure}
+  \end{center}
+\end{figure}
+
+\begin{figure}[hbtp]
+  \begin{center}
+    \includegraphics[width=\cmsFigWidth]{img/subdirectory/img3.pdf}
+    \caption{A caption { with internal } brackets}
+    \label{fig:thesecondfigure}
+  \end{center}
+\end{figure}
+
+Here~\cite{author1:code1} we~\cite{author2:code2} cite something.~\cite{author3:code3}
+
+\end{document}

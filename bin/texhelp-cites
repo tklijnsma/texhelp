@@ -1,0 +1,101 @@
+#!/usr/bin/env python
+
+import texhelp
+import argparse
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument( 'texfiles', metavar='N', type=str, nargs='+', help='list of tex files to analyze' )
+    parser.add_argument( '--bib', type=str, help='Compare the found citations to this bib file' )
+    parser.add_argument( '--generate-bib', action='store_true', help='boolean')
+    args = parser.parse_args()
+
+
+    interpreter = texhelp.TexInterpreter()
+
+    for texfile in args.texfiles:
+        interpreter.interpret_file(texfile)
+        citations, citation_counts = compile_cite_list(interpreter.processed_blocks['cite'])
+
+        if not(args.bib):
+            for i_citation, citation in enumerate(citations):
+                count = citation_counts[citation]
+                i_str = '[{0}]'.format(i_citation+1)
+                p = '{0:<5} {1}'.format(i_str, citation)
+                if count > 1:
+                    p += ' ({0} times)'.format(count)
+                print p
+
+    if args.bib:
+        bibinterpreter = texhelp.BibInterpreter()
+        bibinterpreter.interpret_file(args.bib)
+
+        matched, only_in_tex, only_in_bib = compare_bib(citations, bibinterpreter.ordered_cites)
+
+        print 'Matched citations (ordered):'
+        if len(matched) > 0:
+            for match in matched:
+                i_str = '[{0}]'.format(citations.index(match)+1)
+                print '  {0:<5} {1}'.format(i_str, match)
+            if matched == bibinterpreter.ordered_cites:
+                print 'These citations are already perfectly ordered.'
+            else:
+                print 'Citation order is not perfect'
+        else:
+            print '  None'
+
+        print 'Only in .texs, NOT in .bibs:'
+        if len(only_in_tex) > 0:
+            for match in only_in_tex:
+                i_str = '[{0}]'.format(citations.index(match)+1)
+                print '  {0:<5} {1}'.format(i_str, match)
+        else:
+            print '  None'
+
+        print 'Only in .bibs, NOT in .texs:'
+        if len(only_in_bib) > 0:
+            for match in only_in_bib:
+                print '  {0}'.format(match)
+        else:
+            print '  None'
+
+        if args.generate_bib:
+            text = []
+            for i_match, match in enumerate(matched):
+                i_match_str = '[{0}]'.format(i_match+1)
+                block = bibinterpreter.cite_dict[match]
+                text.append(i_match_str + '\n' + block.get_reformatted_text())
+            text = '\n\n'.join(text) + '\n'
+            with open('suggestion.bib', 'w') as fp:
+                fp.write(text)
+            print 'Wrote minimal .bib file with all matched citations to suggestion.bib'
+
+
+
+def compare_bib(cites_tex, cites_bib):
+    set_tex = set(cites_tex)
+    set_bib = set(cites_bib)
+    matched = list(set_tex & set_bib)
+    only_in_tex = list(set_tex-set_bib)
+    only_in_bib = list(set_bib-set_tex)
+    matched.sort(key=lambda k: cites_tex.index(k))
+    only_in_tex.sort(key=lambda k: cites_tex.index(k))
+    only_in_bib.sort(key=lambda k: cites_bib.index(k))
+    return matched, only_in_tex, only_in_bib
+
+
+def compile_cite_list(citeblocks):
+    citations = []
+    citation_counts = {}
+    for citeblock in citeblocks:
+        for citation in citeblock.get_cites():
+            if not citation in citations:
+                citations.append(citation)
+                citation_counts[citation] = 1
+            else:
+                citation_counts[citation] += 1
+    return citations, citation_counts
+
+
+if __name__ == "__main__":
+    main()

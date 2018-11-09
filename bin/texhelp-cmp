@@ -1,0 +1,94 @@
+#!/usr/bin/env python
+
+import texhelp
+import argparse
+import os
+from time import strftime
+
+
+def main():
+    parser = argparse.ArgumentParser()
+    parser.add_argument( 'texfile', type=str, help='tex file to analyze' )
+    parser.add_argument( '--imgdir', type=str, help='includegraphics path of the tex file')
+    parser.add_argument( '--archive', action='store_true', help='archives imgs in a path that are not used in the specified texfile', default=False)
+    parser.add_argument( '--dryrun', action='store_true', help='does not actually archive but prints behaviour', default=False)
+    args = parser.parse_args()
+
+    if not args.imgdir:
+        args.imgdir = os.path.join(os.path.dirname(args.texfile), 'img')
+
+    helper = texhelp.Helper(args.texfile)
+
+    # Get images in inc graph path
+    imgs_in_dir = []
+    for dirpath, dirnames, filenames in os.walk(args.imgdir):
+        for filename in filenames:
+            if (
+                filename.endswith('.pdf')
+                or filename.endswith('.png')
+                or filename.endswith('.jpeg')
+                or filename.endswith('.eps')
+                ):
+                imgs_in_dir.append(os.path.join(dirpath, filename))
+
+    imgs_in_tex = helper.get_images()
+
+    uimgs_in_both = []
+    uimgs_in_tex  = []
+    uimgs_in_dir  = []
+
+    for img in imgs_in_tex:
+        if img in imgs_in_dir:
+            uimgs_in_both.append(img)
+        else:
+            uimgs_in_tex.append(img)
+
+    for img in imgs_in_dir:
+        if img in imgs_in_tex:
+            continue
+        else:
+            uimgs_in_dir.append(img)
+
+    print 'Imgs in tex with file that exists:'
+    for img in uimgs_in_both:
+        print green(img)
+
+    print 'Imgs in tex with a file that does NOT exist:'
+    for img in uimgs_in_tex:
+        print red(img)
+
+    print 'Unused imgs in path {0}:'.format(args.imgdir)
+    for img in uimgs_in_dir:
+        print img
+
+
+    if args.archive:
+        archive(args.texfile, uimgs_in_dir, args.dryrun)
+
+
+
+def green(text):
+    return '\033[92m' + text + '\033[0m'
+
+def red(text):
+    return '\033[91m' + text + '\033[0m'
+
+
+def archive(tex_file, uimgs_in_dir, dryrun=False):
+    timetag = strftime('%Y%m%d_%H%M%S')
+    archive_dir = os.path.join(os.path.dirname(tex_file), 'archive_img_{0}'.format(timetag))
+
+    for img in uimgs_in_dir:
+        dst_dir = os.path.join(archive_dir, os.path.dirname(img))
+        if not dryrun and not os.path.isdir(dst_dir):
+            os.makedirs(dst_dir)
+        dst = os.path.join(dst_dir, os.path.basename(img))
+
+        if dryrun:
+            print 'Moving {0} to {1}'.format(img, dst)
+        else:
+            os.rename(img, dst)
+
+
+if __name__ == "__main__":
+    main()
