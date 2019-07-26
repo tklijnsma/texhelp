@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import geninterp
 import re
 import os
@@ -85,6 +87,72 @@ class CiteBlock(geninterp.blocks.OpenCloseTagBlock):
     close_tag = '}'
     escape_char = '\\'
 
+class SectionBlock(geninterp.blocks.OpenCloseTagBlock):
+    name = 'section'
+    open_tag = '\\section{'
+    close_tag = '}'
+    escape_char = '\\'
+
+class SubSectionBlock(geninterp.blocks.OpenCloseTagBlock):
+    name = 'subsection'
+    open_tag = '\\subsection{'
+    close_tag = '}'
+    escape_char = '\\'
+
+class SubSubSectionBlock(geninterp.blocks.OpenCloseTagBlock):
+    name = 'subsubsection'
+    open_tag = '\\subsubsection{'
+    close_tag = '}'
+    escape_char = '\\'
+
+class SubSubSubSectionBlock(geninterp.blocks.OpenCloseTagBlock):
+    name = 'subsubsubsection'
+    open_tag = '\\subsubsubsection{'
+    close_tag = '}'
+    escape_char = '\\'
+
+
+class NewCommandBlock(geninterp.blocks.OpenCloseTagBlock):
+    name = 'newcommand'
+    open_tag = '\\newcommand{'
+    close_tag = '}'
+    escape_char = '\\'
+
+class ProvideCommandBlock(geninterp.blocks.OpenCloseTagBlock):
+    name = 'providecommand'
+    open_tag = '\\providecommand{'
+    close_tag = '}'
+    escape_char = '\\'
+
+
+class FigureBlock(geninterp.blocks.OpenCloseTagBlock):
+    name = 'figure'
+    open_tag = '\\begin{figure}'
+    close_tag = '\\end{figure}'
+    escape_char = '\\'
+
+class IncludeGraphicsBlock(geninterp.blocks.OpenCloseTagBlock):
+    name = 'includegraphics'
+    open_tag = '\\includegraphics'
+    close_tag = '}'
+    escape_char = '\\'
+
+    def advance_index_at_open(self):
+        self.square_brackets = ''
+        r = len(self.open_tag)
+        if self.text[self.i_begin+len(self.open_tag)] == '[':
+            text = self.text[self.i_begin+len(self.open_tag):]
+            self.square_brackets = re.match(r'\[.*?\]', text).group()
+            r += len(self.square_brackets) + 1
+        return r
+
+    def process(self, text=None):
+        if text is None:
+            r = self.get_text()
+        else:
+            r = text
+        return self.open_tag + self.square_brackets + '{' + r + self.close_tag
+
 
 
 class BaseTexInterpreter(geninterp.Interpreter):
@@ -100,6 +168,15 @@ class BaseTexInterpreter(geninterp.Interpreter):
 class TexInterpreter(BaseTexInterpreter):
     blocks = BaseTexInterpreter.blocks + [
         CiteBlock,
+        # 
+        SectionBlock,
+        SubSectionBlock,
+        SubSubSectionBlock,
+        SubSubSubSectionBlock,
+        NewCommandBlock,
+        ProvideCommandBlock,
+        FigureBlock,
+        IncludeGraphicsBlock,
         ]
 
 

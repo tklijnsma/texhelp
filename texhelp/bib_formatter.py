@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import texhelp
 import logging
 import re
@@ -5,15 +7,22 @@ import re
 
 class BibFormatter(object):
     """docstring for BibFormatter"""
-    def __init__(self):
+
+    def __init__(self, cms_style=True):
         super(BibFormatter, self).__init__()
+        self.cms_style = cms_style
 
     def get_citation(self, raw):
-        citation = BibCitation(raw)
-        citation.get_entry_type()
-        citation.read_fields()
-        citation.format_cms_style()
-        return citation
+        try:
+            citation = BibCitation(raw)
+            citation.get_entry_type()
+            citation.read_fields()
+            if self.cms_style: citation.format_cms_style()
+            return citation
+        except:
+            logging.error('Encountered error for the following raw text:\n' + raw)
+            raise
+
 
 
 class BibCitation(object):
@@ -27,11 +36,12 @@ class BibCitation(object):
 
     def get_entry_type(self):
         raw = self.raw.strip()
+        if not raw.startswith('@'): raise ValueError('Unexpected bib format: Does not start with \'@\'')
         match = re.match(r'@(\w+)\{', raw)
         open_tag = match.group()
         self.entry_type = match.group(1)
         if not raw.endswith('}'): raise ValueError('Unexpected bib format: Does not end with \'}\'')
-        self.bib = self.raw[len(open_tag):-1]
+        self.bib = raw[len(open_tag):-1]
 
     def comma_separate_ignoring_quotes(self, text):
         # Flatten line breaks
@@ -39,10 +49,13 @@ class BibCitation(object):
         quote_mode = False
         separated = []
         field = ''
-        for c in text:
+        for i, c in enumerate(text):
             if c == '"':
-                quote_mode = not(quote_mode)
-                field += c
+                if i>0 and text[i-1] == '\\':
+                    field += c
+                else:
+                    quote_mode = not(quote_mode)
+                    field += c
             elif c == ',' and not(quote_mode):
                 separated.append(field)
                 field = ''
@@ -59,6 +72,17 @@ class BibCitation(object):
         raw_key, raw_val = raw_field.split('=',1)
         key = raw_key.strip().strip('"').strip().lower()
         val = raw_val.strip().strip('"').strip()
+        val = re.sub(r' +', ' ', val)
+        val = val.decode('utf-8')
+        val = val.replace(u'\xa0', u' ') # Ignore non-breaking spaces
+        # # There may still be some characters in these strings 
+        # logging.debug('Test log: val = ')
+        # try:
+        #     logging.debug(val.encode('utf-8'))
+        # except UnicodeEncodeError:
+        #     print 'Problem with key {0}:'.format(key)
+        #     print val
+        #     raise
         return key, val
 
     def read_fields(self):
@@ -77,15 +101,16 @@ class BibCitation(object):
             key, val = self.interpret_raw_field(raw_field)
             self.fields[key] = val
             self.keys.append(key) # Also keep a sorted list of the keys
-            logging.debug('key/val: {0:12} = {1}'.format(key, val))
+            logging.debug('key/val: {0:12} = {1}'.format(key, val.encode('utf-8')))
 
     def remove_key(self, key):
         del self.fields[key]
         self.keys.remove(key)
 
     def format_cms_style(self):
-        cmsformatter = CMSCiteFormatter(self.fields, self.keys)
+        cmsformatter = CMSCiteFormatter(self.entry_type, self.fields, self.keys)
         cmsformatter.check_fields()
+        self.entry_type = cmsformatter.entry_type
         self.fields = cmsformatter.fields
         self.keys = cmsformatter.keys
 
@@ -99,24 +124,30 @@ class BibCitation(object):
             'slaccitation'  : 'SLACcitation',
             }
         max_key_length = max(map(len, self.keys))
-        for key in self.keys:
+        loop_keys = [k for k in self.keys if not k == 'rawtitle']
+        for key in loop_keys:
             out.append(
                 '    {0:{max_key_length}} = "{1}"{2}'
                 .format(
-                    capitalization_exceptions.get(key,key), self.fields[key],
-                    ',' if key != self.keys[-1] else '',
+                    capitalization_exceptions.get(key,key), self.fields[key].encode('utf-8'),
+                    ',' if key != loop_keys[-1] else '',
                     max_key_length=max_key_length
                     )
                 )
         out.append('    }')
-        return '\n'.join(out)
+        r = '\n'.join(out)
+        is_ascii = all(ord(char) < 128 for char in r)
+        if not(is_ascii):
+            logging.error('The parsed output is NOT fully ASCII!')
+        return r
 
 
 class CMSCiteFormatter(object):
     """docstring for CMSCiteFormatter"""
 
-    def __init__(self, fields, keys=None):
+    def __init__(self, entry_type, fields, keys=None):
         super(CMSCiteFormatter, self).__init__()
+        self.entry_type = entry_type
         self.fields = fields
         if keys is None:
             self.keys = self.fields.keys()
@@ -135,17 +166,21 @@ class CMSCiteFormatter(object):
         logging.warning(msg)
         self.warning_msgs.append(msg)
 
+    def remove_key(self, key):
+        del self.fields[key]
+        self.keys.remove(key)
+
     def is_a_pas(self):
          if self._is_a_pas is None:
              self._is_a_pas = False
              for key in [ 'number', 'reportNumber' ]:
                  if key in self.keys:
-                     if 'cms-pas' in self.values[key].lower():
+                     if 'cms-pas' in self.fields[key].lower():
                          self._is_a_pas = True
                          break
              else:
                  if 'type' in self.keys:
-                     if 'CMS Physics Analysis Summary' in self.values['type']:
+                     if 'CMS Physics Analysis Summary' in self.fields['type']:
                          self._is_a_pas = True
          return self._is_a_pas
 
@@ -183,9 +218,9 @@ class CMSCiteFormatter(object):
                 self.keys.append('type')
                 self.fields['type'] = '{CMS Physics Analysis Summary}'
 
-            if self.open_tag != '@techreport{':
+            if self.entry_type != '@techreport{':
                 self.warning('Is a PAS, but not a @techreport. Chaning entry_type to techreport')
-                self.open_tag = '@techreport{'
+                self.entry_type = '@techreport{'
 
             if not 'number' in self.keys:
                 if 'reportNumber' in self.keys:
@@ -208,7 +243,7 @@ class CMSCiteFormatter(object):
                 logging.warning(
                     'Replacing title:\n'
                     'Old: \"{0}\"\nNew: \"{1}\"'
-                    .format(self.fields['title'], optimized_title)
+                    .format(self.fields['title'].encode('utf-8'), optimized_title.encode('utf-8'))
                     )
                 if not 'rawtitle' in self.keys:
                     self.keys.append('rawtitle')
@@ -261,6 +296,7 @@ class CMSCiteFormatter(object):
             new_segment = []
             words = segment.split(' ')
             for word in words:
+                word = word.strip()
                 if len(word) == 0:
                     pass
                 elif not(re.search(r'[a-zA-Z]+', word)):
@@ -268,24 +304,35 @@ class CMSCiteFormatter(object):
                     # word = add_brackets(word)
                     pass
                 elif word == word.capitalize() and not word.isdigit():
+                    # if word != words[0]:
+                    #     word = add_brackets(word[0].upper()) + word[1:]
+                    # 27-11: Realized CMS convention is actually lower case letters
                     if word != words[0]:
-                        word = add_brackets(word[0].upper()) + word[1:]
+                        word = word.lower()
+                        if word.strip() in ['higgs' ]:
+                            word = add_brackets(word[0].upper()) + word[1:]
                 elif word.lower() != word:
                     word = add_brackets(word)
                 new_segment.append(word)
             segments[i_segment] = ' ' + ' '.join(new_segment)
 
+        logging.debug('segments: {0}'.format(segments))
+
         # Re-concatenate
         math_mode = False
-        out = ''
+        out = u''
         for segment in segments:
             out += segment
             if math_mode:
                 out += '$}'
-            elif segment != segments[-1]:
+            else:
                 out += ' {$'
             math_mode = not(math_mode)
 
+        if out.endswith(' {$'):
+            out = out[:-3]
+
+        out = re.sub(r' +', ' ', out)
         return out.strip()
 
 

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import geninterp
 import re
 import os
@@ -12,6 +14,13 @@ class StringBlock(geninterp.blocks.OpenCloseTagBlock):
     close_tag = '"'
     escape_char = '\\'
     forbid_new_openings = True
+
+    @classmethod
+    def open(cls, text, i):
+        if not(cls.escape_char is None):
+            if text[i-1] == cls.escape_char: return False
+        return text[i:i+len(cls.open_tag)].lower() == cls.open_tag.lower()
+
 
 class EntryBlock(geninterp.blocks.OpenCloseTagBlock):
     name = 'entry'

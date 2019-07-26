@@ -13,11 +13,16 @@ setup(name='texhelp',
       scripts=[
         'bin/texhelp-structure',
         'bin/texhelp-cites',
+        'bin/texhelp-ascii',
+        'bin/texhelp-bib',
+        'bin/texhelp-flatten',
+        'bin/texhelp-commands',
+        'bin/texhelp-cmsfigrenaming',
+        # 
         # 'bin/texhelp-figs',
         # 'bin/texhelp-imgs',
         # 'bin/texhelp-cmp',
         # 'bin/texhelp-inputs',
-        # 'bin/texhelp-bib',
         # 'bin/texhelp-labels',
         ]
       )

@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from unittest import TestCase
 
 import texhelp
@@ -91,6 +93,18 @@ class TestBibFormatter(TestCase):
         logging.debug('Processed:\n{0}'.format(citation.parse()))
         self.assertEqual(citation.parse(), text)
 
+    def test_unicode(self):
+        text = (
+            '@article{Higgs,\n'
+            '    author = "Dissertori, Günther",\n'
+            '    title  = "Broken {S}ymmetries, and the {M}asses of {G}auge {B}osons"\n'
+            '    }'
+            )
+        citation = self.formatter.get_citation(text)
+        logging.debug('Given:\n{0}'.format(text))
+        logging.debug('Processed:\n{0}'.format(citation.parse()))
+        self.assertEqual(citation.parse(), text)
+
 
 class TestBibTitleFormatter(TestCase):
 
@@ -110,7 +124,20 @@ class TestBibTitleFormatter(TestCase):
         self.assertEqual(
             self.formatter.get_reinterpreted_title('at {$\sqrt{s}$} = 8 {TeV} with'), 'at {$\sqrt{s}$} = 8 {TeV} with'
             )
-        
+        self.assertEqual(
+            self.formatter.get_reinterpreted_title('too much      space'), 'too much space'
+            )
+
+        self.assertEqual(
+            self.formatter.get_reinterpreted_title('$onlymath$'), '{$onlymath$}'
+            )
+        self.assertEqual(
+            self.formatter.get_reinterpreted_title('$only$ $math$'), '{$only$} {$math$}'
+            )
+        self.assertEqual(
+            self.formatter.get_reinterpreted_title('$only$ $math$ with text'), '{$only$} {$math$} with text'
+            )
+
 
 
 

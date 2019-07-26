@@ -5,18 +5,39 @@ import argparse
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument( 'texfiles', metavar='N', type=str, nargs='+', help='list of tex files to analyze' )
+    parser.add_argument( 'texs', metavar='N', type=str, nargs='+', help='list of tex files to analyze' )
+    parser.add_argument( '--bibs', metavar='N', type=str, nargs='+', help='list of bib files to analyze' )
+    parser.add_argument( '--plain', action='store_true', help='outputs less details')
     args = parser.parse_args()
 
     interpreter = texhelp.TexInterpreter()
 
-    for texfile in args.texfiles:
+    tex_trees = []
+    for texfile in args.texs:
         interpreter.set_base_file(texfile)
-        if len(args.texfiles) > 1: print '{0}'.format(texfile)
-        tree = interpreter.interpret_file(texfile)
+        tex_trees.append(interpreter.interpret_file(texfile))
 
-        for cite_node in tree.gen_blocks_by_name('cite'):
-            print cite_node.parse()
+    if not(args.bibs):
+        matcher = texhelp.BibTexMatcher(tex_trees, []).process()
+        if args.plain:
+            matcher.show_summary_tex_only_plain()
+        else:
+            matcher.show_summary_tex_only()
+
+    else:
+        bib_trees = []
+        bib_interpreter = texhelp.BibInterpreter()
+        for bibfile in args.bibs:
+            bib_trees.append(bib_interpreter.interpret_file(bibfile))
+
+        matcher = texhelp.BibTexMatcher(tex_trees, bib_trees)
+        matcher.bib_formatter.cms_style = False
+        matcher.process()
+        matcher.show_summary()
+
+
+
+
 
 
 #____________________________________________________________________
